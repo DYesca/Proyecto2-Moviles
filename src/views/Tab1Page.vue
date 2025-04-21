@@ -9,11 +9,12 @@
     <ion-content>
       <!-- Esta vista es una lista de proyectos ligados a usuarios -->
       <ion-list>
-        <!--mostrar proyectos -->
+        <!--mostrar proyectos 
         <ion-item v-for="project in projects" :key="project.id">
           <IonLabel>{{ project.id }}</IonLabel>
           <ion-label>{{ project.name }}</ion-label>
         </ion-item>
+        --->
       </ion-list>
     </ion-content>
   </ion-page>
@@ -30,16 +31,7 @@ const projects = ref([]);
 
 // Función para obtener los proyectos desde el API
 const fetchProjects = async () => {
-  try {
-    const response = await fetch('http://127.0.0.1:8000/api/project/list');
-    if (!response.ok) {
-      throw new Error('Error al obtener los proyectos');
-    }
-    const data = await response.json();
-    projects.value = data; // Asigna los datos a la variable reactiva
-  } catch (error) {
-    console.error('Error:', error);
-  }
+  
 };
 
 // Llama a la función fetchProjects cuando el componente se monta
