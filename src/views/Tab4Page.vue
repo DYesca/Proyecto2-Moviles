@@ -12,8 +12,21 @@
         </ion-toolbar>
       </ion-header>
 
+      <!-- Logged In View -->
+      <div v-if="isLoggedIn" class="ion-padding">
+        <ion-card>
+          <ion-card-header>
+            <ion-card-title>Bienvenido, {{ userName }}! 🎉</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <p>Ahora estas logueado exitosamente!</p>
+            <ion-button expand="block" color="danger" @click="logout">Logout</ion-button>
+          </ion-card-content>
+        </ion-card>
+      </div>
+
       <!-- Login Form -->
-      <div v-if="!isRegistering">
+      <div v-else-if="!isRegistering" class="ion-padding">
         <ion-card>
           <ion-card-header>
             <ion-card-title>Login</ion-card-title>
@@ -34,7 +47,7 @@
       </div>
 
       <!-- Register Form -->
-      <div v-else>
+      <div v-else class="ion-padding">
         <ion-card>
           <ion-card-header>
             <ion-card-title>Register</ion-card-title>
@@ -57,71 +70,119 @@
           </ion-card-content>
         </ion-card>
       </div>
+
+      <!-- Alert -->
+      <ion-alert
+        :is-open="showAlert"
+        :header="alertHeader"
+        :message="alertMessage"
+        :buttons="['OK']"
+        @didDismiss="showAlert = false"
+      ></ion-alert>
     </ion-content>
   </ion-page>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonItem, IonLabel, IonInput, IonButton } from '@ionic/vue';
-import ExploreContainer from '@/components/ExploreContainer.vue';
-import User from "@/user"; // ajusta la ruta si es necesario
+import {
+  IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonCard, IonCardHeader, IonCardTitle, IonCardContent,
+  IonItem, IonLabel, IonInput, IonButton, IonAlert
+} from '@ionic/vue';
+import { Preferences } from '@capacitor/preferences'; // Capacitor Storage
 
 
-// Variables para el login y register forms
-const loginData = ref({
-  email: '',
-  password: ''
-});
-
-const registerData = ref({
-  name: '',
-  email: '',
-  password: ''
-});
-
-// Estado para cambiar entre login y register forms
+// Estados reactivos
 const isRegistering = ref(false);
+const isLoggedIn = ref(false);
+const userName = ref('');
+const showAlert = ref(false);
+const alertHeader = ref('');
+const alertMessage = ref('');
 
-// Function to handle login
+const loginData = ref({ email: '', password: '' });
+const registerData = ref({ name: '', email: '', password: '' });
+
+// Alternar entre login y registro
+const toggleRegister = () => {
+  isRegistering.value = !isRegistering.value;
+};
+
+// Mostrar alert
+const showIonicAlert = (header: string, message: string) => {
+  alertHeader.value = header;
+  alertMessage.value = message;
+  showAlert.value = true;
+};
+
+// Login
 const handleLogin = async () => {
   try {
-    const response = await fetch('http://127.0.0.1:8000/api/login', {
+    const response = await fetch('https://po02projectmanagerapi-production.up.railway.app/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(loginData.value)
     });
-    if (!response.ok) throw new Error('Login failed');
+
     const data = await response.json();
+
+    if (!response.ok || !data.token) throw new Error('Login failed');
+
+    // Esto guarda el token en almacenamiento local
+    await Preferences.set({
+      key: 'user_token',
+      value: data.token,
+    });
+
+    if (data.name) {
+      await Preferences.set({
+        key: 'user_name',
+        value: data.name,
+      });
+    }
+
+    userName.value = data.name || 'User';
+    isLoggedIn.value = true;
+
     console.log('Login successful:', data);
-    alert('Login successful!');
+    showIonicAlert('Success 🎉', 'You have been logged in successfully!');
   } catch (error) {
-    console.error('Error during login:', error);
-    alert('Login failed. Please check your credentials.');
+    console.error('Login error:', error);
+    showIonicAlert('Login Failed', 'Please check your email and password.');
   }
 };
 
-// Function to handle register
+
+// Registro
 const handleRegister = async () => {
   try {
-    const response = await fetch('http://127.0.0.1:8000/api/register', {
+    const response = await fetch('https://po02projectmanagerapi-production.up.railway.app/api/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(registerData.value)
     });
     if (!response.ok) throw new Error('Registration failed');
     const data = await response.json();
-    console.log('Registration successful:', data);
-    alert('Registration successful! You can now log in.');
-    toggleRegister(); // Switch back to login form
+    showIonicAlert('Registro Completado ✅', 'Ahora puedes iniciar sesión.');
+    toggleRegister();
   } catch (error) {
-    console.error('Error during registration:', error);
-    alert('Registration failed. Please try again.');
+    showIonicAlert('Registro Fallido', 'Por favor intenta de nuevo.');
   }
 };
 
-// Function to toggle between login and register forms
-const toggleRegister = () => {
-  isRegistering.value = !isRegistering.value;
+// Logout
+const logout = () => {
+  isLoggedIn.value = false;
+  userName.value = '';
+  loginData.value = { email: '', password: '' };
+  showIonicAlert('Adiós  👋', 'Haz salido de tu cuenta exitosamente.');
 };
 </script>
+
+<style scoped>
+p {
+  font-size: 16px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+</style>

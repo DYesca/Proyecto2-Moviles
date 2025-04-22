@@ -45,7 +45,7 @@ const router = useRouter();
 // Función para obtener los proyectos desde el API
 const fetchProjects = async () => {
   try {
-    const response = await fetch('http://127.0.0.1:8000/api/project/list');
+    const response = await fetch('https://po02projectmanagerapi-production.up.railway.app/api');
     if (!response.ok) {
       throw new Error('Error al obtener los proyectos');
     }
@@ -79,7 +79,7 @@ const addNewProject = async () => {
         text: 'Crear',
         handler: async (data) => {
           try {
-            const response = await fetch('http://127.0.0.1:8000/api/project/list', {
+            const response = await fetch('https://po02projectmanagerapi-production.up.railway.app/api', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
@@ -115,7 +115,7 @@ const showDeleteAlert = async (index: number) => {
         text: 'Eliminar',
         handler: async () => {
           try {
-            const response = await fetch(`http://127.0.0.1:8000/api/project/list/${projects.value[index].id}`, {
+            const response = await fetch(`https://po02projectmanagerapi-production.up.railway.app/api${projects.value[index].id}`, {
               method: 'DELETE'
             });
             if (!response.ok) {

@@ -38,4 +38,10 @@ const fetchProjects = async () => {
 onMounted(() => {
   fetchProjects();
 });
+
+import { Preferences } from '@capacitor/preferences';
+
+const token = await Preferences.get({ key: 'user_token' });
+console.log('Token:', token.value);
+
 </script>
