@@ -171,7 +171,18 @@ const handleRegister = async () => {
 };
 
 // Logout
-const logout = () => {
+const logout = async () => {
+  try {
+    const response = await fetch('https://po02projectmanagerapi-production.up.railway.app/api/logout', {
+      method: 'DELETE',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ token: await Preferences.get({ key: 'user_token' }) }),
+    });
+    if (!response.ok) throw new Error('Logout failed');
+  } catch (error) {
+    console.error('Error removing token:', error);
+  }
+  // Limpiar datos de sesión
   isLoggedIn.value = false;
   userName.value = '';
   loginData.value = { email: '', password: '' };

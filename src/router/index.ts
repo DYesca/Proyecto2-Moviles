@@ -34,13 +34,10 @@ const routes: Array<RouteRecordRaw> = [
     ]
   },
   {
-    path: '/project/:id',
+    path: '/project/:id/tasks',
     component: () => import('@/views/Proyectos.vue')
   },
-  {
-    path: '/edit/:index',
-    component: () => import('@/views/EditProject.vue')
-  }
+
 ]
 
 const router = createRouter({
