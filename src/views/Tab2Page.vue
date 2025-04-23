@@ -7,133 +7,173 @@
     </ion-header>
 
     <ion-content>
-      <!-- Lista de proyectos y botones para agregar o eliminar o editar un proyecto -->
+      <!-- Lista de proyectos -->
       <ion-list>
-        <ion-item v-for="project in projects" :key="project.id">
+        <ion-item v-for="(project, index) in projects" :key="project.id">
           <ion-label>{{ project.name }}</ion-label>
 
-          <!-- Botón para ir a Editar Tarea-->
-          <ion-button :router-link="'/edit/' + index" color="medium" fill="clear">Editar</ion-button>
+          <!-- Botón para editar con modal -->
+          <ion-button @click="showEditModal(project, index)" color="medium" fill="clear">
+            Editar
+          </ion-button>
 
-          <!-- Botón para eliminar la tarea -->
-          <ion-button @click="showDeleteAlert(index)" fill="solid" color="danger">Borrar</ion-button>
+          <!-- Botón para eliminar proyecto -->
+          <ion-button @click="showDeleteAlert(index)" fill="solid" color="danger">
+            Borrar
+          </ion-button>
         </ion-item>
       </ion-list>
 
-      <ion-item>
-        <ion-button @click="addNewProject" color="primary" fill="solid">Agregar</ion-button>
+      <!-- Botón para agregar nuevo proyecto -->
+      <ion-item lines="none">
+        <ion-button @click="addNewProject" color="primary" expand="block">
+          Agregar Proyecto
+        </ion-button>
       </ion-item>
-
     </ion-content>
   </ion-page>
 </template>
 
 <script setup lang="ts">
-import { list } from 'ionicons/icons';
-import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonLabel, IonButton } from '@ionic/vue';
-import ExploreContainer from '@/components/ExploreContainer.vue';
-
+import {
+  IonPage, IonHeader, IonToolbar, IonTitle,
+  IonContent, IonList, IonItem, IonLabel, IonButton,
+  alertController
+} from '@ionic/vue';
 
 import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { alertController } from '@ionic/vue';
+import { Preferences } from '@capacitor/preferences';
 
+const projects = ref<any[]>([]);
+const token = ref<string | null>(null);
 
-// Variable reactiva para almacenar los proyectos
-const projects = ref([]);
-const router = useRouter();
-// Función para obtener los proyectos desde el API
+// Obtener token al iniciar
+const getToken = async () => {
+  const result = await Preferences.get({ key: 'token' });
+  token.value = result.value;
+};
+
+// Obtener proyectos
 const fetchProjects = async () => {
+  if (!token.value) return;
+
   try {
-    const response = await fetch('https://po02projectmanagerapi-production.up.railway.app/api');
-    if (!response.ok) {
-      throw new Error('Error al obtener los proyectos');
-    }
+    const response = await fetch('https://po02projectmanagerapi-production.up.railway.app/api/project/list', {
+      headers: {
+        Authorization: `Bearer ${token.value}`
+      }
+    });
+
+    if (!response.ok) throw new Error('Error al obtener proyectos');
     const data = await response.json();
-    projects.value = data; // Asigna los datos a la variable reactiva
+    projects.value = data;
   } catch (error) {
-    console.error('Error:', error);
+    console.error(error);
   }
 };
-// Llama a la función fetchProjects cuando el componente se monta
-onMounted(() => {
-  fetchProjects();
-});
-// Función para agregar un nuevo proyecto 
+
+// Crear nuevo proyecto
 const addNewProject = async () => {
   const alert = await alertController.create({
     header: 'Nuevo Proyecto',
-    inputs: [
-      {
-        name: 'name',
-        type: 'text',
-        placeholder: 'Nombre del Proyecto'
-      }
-    ],
+    inputs: [{ name: 'name', type: 'text', placeholder: 'Nombre del Proyecto' }],
     buttons: [
-      {
-        text: 'Cancelar',
-        role: 'cancel'
-      },
+      { text: 'Cancelar', role: 'cancel' },
       {
         text: 'Crear',
         handler: async (data) => {
           try {
-            const response = await fetch('https://po02projectmanagerapi-production.up.railway.app/api', {
+            const response = await fetch('https://po02projectmanagerapi-production.up.railway.app/api/project/store', {
               method: 'POST',
               headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token.value}`
               },
               body: JSON.stringify({ name: data.name })
             });
-            if (!response.ok) {
-              throw new Error('Error al crear el proyecto');
-            }
+
+            if (!response.ok) throw new Error('Error al crear proyecto');
             const newProject = await response.json();
-            projects.value.push(newProject); // Agrega el nuevo proyecto a la lista
-            console.log('Proyecto creado:', newProject);
+            projects.value.push(newProject);
           } catch (error) {
-            console.error('Error:', error);
+            console.error(error);
           }
         }
       }
     ]
   });
+
   await alert.present();
 };
-// Función para mostrar la alerta de confirmación antes de eliminar un proyecto
+
+// Editar proyecto con modal
+const showEditModal = async (project: any, index: number) => {
+  const alert = await alertController.create({
+    header: 'Editar Proyecto',
+    inputs: [{ name: 'name', type: 'text', placeholder: 'Nuevo nombre', value: project.name }],
+    buttons: [
+      { text: 'Cancelar', role: 'cancel' },
+      {
+        text: 'Guardar',
+        handler: async (data) => {
+          try {
+            const response = await fetch(`https://po02projectmanagerapi-production.up.railway.app/api/project/update/${project.id}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token.value}`
+              },
+              body: JSON.stringify({ name: data.name })
+            });
+
+            if (!response.ok) throw new Error('Error al editar proyecto');
+            const updatedProject = await response.json();
+            projects.value[index].name = updatedProject.name;
+          } catch (error) {
+            console.error(error);
+          }
+        }
+      }
+    ]
+  });
+
+  await alert.present();
+};
+
+// Eliminar proyecto
 const showDeleteAlert = async (index: number) => {
   const alert = await alertController.create({
     header: 'Eliminar Proyecto',
     message: '¿Estás seguro de que deseas eliminar este proyecto?',
     buttons: [
-      {
-        text: 'Cancelar',
-        role: 'cancel'
-      },
+      { text: 'Cancelar', role: 'cancel' },
       {
         text: 'Eliminar',
         handler: async () => {
           try {
-            const response = await fetch(`https://po02projectmanagerapi-production.up.railway.app/api${projects.value[index].id}`, {
-              method: 'DELETE'
+            const response = await fetch(`https://po02projectmanagerapi-production.up.railway.app/api/project/destroy/${projects.value[index].id}`, {
+              method: 'DELETE',
+              headers: {
+                Authorization: `Bearer ${token.value}`
+              }
             });
-            if (!response.ok) {
-              throw new Error('Error al eliminar el proyecto');
-            }
-            projects.value.splice(index, 1); // Elimina el proyecto de la lista
-            console.log('Proyecto eliminado:', projects.value[index]);
+
+            if (!response.ok) throw new Error('Error al eliminar proyecto');
+            projects.value.splice(index, 1);
           } catch (error) {
-            console.error('Error:', error);
+            console.error(error);
           }
         }
       }
     ]
   });
+
   await alert.present();
 };
-// Función para navegar a la página de edición de tareas
-const editTask = (index: number) => {
-  router.push({ path: `/edit/${index}` });
-};
+
+// Al montar componente
+onMounted(async () => {
+  await getToken();
+  await fetchProjects();
+});
 </script>
